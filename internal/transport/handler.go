@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/rpc"
+	"github.com/gorilla/rpc/json"
 	"github.com/pintoter/warehouse-api/internal/service"
 	"github.com/pintoter/warehouse-api/pkg/logger"
 )
@@ -19,21 +21,12 @@ func NewHandler(service service.ProductService) *Handler {
 		service: service,
 	}
 
-	handler.InitRoutes()
+	rpcServer := rpc.NewServer()
+	rpcServer.RegisterCodec(json.NewCodec(), "application/json")
+	rpcServer.RegisterService(service, "ProductService")
+	handler.router.Handle("/rpc", rpcServer)
 
 	return handler
-}
-
-func (h *Handler) InitRoutes() {
-	h.router.HandleFunc("/reserveProducts", h.reserveProducts).Methods(http.MethodPost)
-	h.router.HandleFunc("/releaseProducts", h.releaseProducts).Methods(http.MethodPost)
-	h.router.HandleFunc("/showProducts", h.showProducts).Methods(http.MethodPost)
-	// v1 := h.router.PathPrefix("/api/v1").Subrouter()
-	// {
-	// 	v1.HandleFunc("/reserveProducts", h.reserveProducts).Methods(http.MethodPost)
-	// 	v1.HandleFunc("/realeseProducts", h.realeseProducts).Methods(http.MethodPost)
-	// 	v1.HandleFunc("/showProducts", h.showProducts).Methods(http.MethodPost)
-	// }
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

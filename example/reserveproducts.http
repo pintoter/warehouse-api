@@ -1,35 +1,35 @@
 // 1 WH - 3, 2 WH - 3  ---> 1 WH - 0, 2 WH - 1 
 curl -X 'POST' \
-  'http://localhost:8080/reserveProducts' \
+  'http://localhost:8080/rpc' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '{"products":[{"code": "12345", "quantity": 5}]}'
+  -d '{
+    "method": "ProductService.ReserveProducts",
+    "params": [{"products":[{"code": "12345", "quantity": 5}]}],
+    "id": "coola"
+    }'
 
+Response: {"result":{"reservation_id":"6f23d81b-5bbb-4f30-b842-26a5f744a9df","reservation_products_info":[{"code":"12345","status":"reserved"}]},"error":null,"id":"coola"}
 
 // 1 WH - 3, 2 WH - 3, 3 WH (not availibale) - 3 ---> error 
 curl -X 'POST' \
-  'http://localhost:8080/reserveProducts' \
+  'http://localhost:8080/rpc' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '{"products":[{"code": "12345", "quantity": 8}]}'
+  -d '{
+    "method": "ProductService.ReserveProducts",
+    "params": [{"products":[{"code": "12345", "quantity": 8}]}],
+    "id": "coola"
+    }'
 
+Response: {"result":{"reservation_id":"4fd6ea31-6c1c-4959-bcb8-7cb13f848c98","reservation_products_info":[{"code":"12345","status":"required quantity of products is missing"}]},"error":null,"id":"coola"}
 
 curl -X 'POST' \
-  'http://localhost:8080/reserveProducts' \
+  'http://localhost:8080/rpc' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '{"products": \
-  [ \
-    {"code": "12345", "quantity": 5}, \
-    {"code": "12346", "quantity": 4}, \
-  ]}'
-
-curl -X 'POST' \
-'http://0.0.0.0:8080/reserveProducts' \
--H 'accept: application/json' \
--H 'Content-Type: application/json' \
--d '{"products": [ \
-  {"code": "12345", "quantity": 1}, \
-  {"code": "12346", "quantity": 2} \
-  ] \
-  }'
+    -d '{
+    "method": "ProductService.ReserveProducts",
+    "params": [{"products":[{"code": "12345", "quantity": 5}, {"code": "12346", "quantity": 4}]}],
+    "id": "coola"
+    }'

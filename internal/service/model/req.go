@@ -5,6 +5,10 @@ type ReserveProductReq struct {
 	Quantity int    `json:"quantity"`
 }
 
+type ReserveProductsReq struct {
+	Products []ReserveProductReq `json:"products"`
+}
+
 type ReserveProductResp struct {
 	Code   string `json:"code"`
 	Status string `json:"status"`
@@ -21,6 +25,10 @@ type ReleaseProductReq struct {
 	Quantity      int    `json:"quantity"`
 }
 
+type ReleaseProductsReq struct {
+	Products []ReleaseProductReq `json:"products"`
+}
+
 type ReleaseProductResp struct {
 	ReservationId string `json:"reservation_id"`
 	Code          string `json:"code"`
@@ -29,4 +37,8 @@ type ReleaseProductResp struct {
 
 type ReleaseProductsResp struct {
 	ReleaseProductsInfo []ReleaseProductResp `json:"release_products_info"`
+}
+
+type ShowProductsReq struct {
+	WarehouseId int `json:"warehouse_id"`
 }

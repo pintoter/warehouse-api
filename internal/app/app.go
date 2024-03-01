@@ -38,6 +38,7 @@ func Run() {
 
 	repository := productRepository.NewRepository(db)
 	service := productService.NewService(repository)
+
 	handler := transport.NewHandler(service)
 	server := server.New(handler, &cfg.HTTP)
 

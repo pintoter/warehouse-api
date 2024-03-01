@@ -1,5 +1,42 @@
 curl -X 'POST' \
-  'http://localhost:8080/releaseProducts' \
+  'http://localhost:8080/rpc' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '{"products":[{"reservation_id":"8f5233dd-c228-49da-94ca-d0161321d365","code": "12345", "quantity": 2}]}'
+  -d '{
+    "method": "ProductService.ReleaseProducts",
+    "params": [{"products":[{"reservation_id":"422ab5fa-fbf1-461a-99dc-2c6a49c323f1","code": "12345", "quantity": 2}]}],
+    "id": "coola"
+    }'
+
+Resp:
+  {"result":
+    {"release_products_info":
+      [{"reservation_id":"422ab5fa-fbf1-461a-99dc-2c6a49c323f1","code":"12345","status":"released"}]
+    },
+  "error":null,
+  "id":"coola"
+  }
+
+curl -X 'POST' \
+  'http://localhost:8080/rpc' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "method": "ProductService.ReleaseProducts",
+    "params": [{"products":
+    [
+      {"reservation_id":"422ab5fa-fbf1-461a-99dc-2c6a49c323f1","code": "12345", "quantity": 2},
+      {"reservation_id":"965ac486-0451-4e87-be55-2f985cdbf292","code": "12346", "quantity": 2}
+    ]
+    }],
+    "id": "coola"
+    }'
+
+Resp: 
+{"result":{"release_products_info":[
+    {"reservation_id":"965ac486-0451-4e87-be55-2f985cdbf292","code":"12346","status":"released"},
+    {"reservation_id":"422ab5fa-fbf1-461a-99dc-2c6a49c323f1","code":"12345","status":"released"}
+  ]
+},
+"error":null,
+"id":"coola"}

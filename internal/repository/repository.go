@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/pintoter/warehouse-api/internal/model"
 	repoModel "github.com/pintoter/warehouse-api/internal/repository/model"
+	"github.com/pintoter/warehouse-api/internal/service/model"
 )
 
 type ProductRepository interface {

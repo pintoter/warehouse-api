@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/pintoter/warehouse-api/internal/model"
+	"github.com/pintoter/warehouse-api/internal/service/model"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )

@@ -1,15 +1,13 @@
 package service
 
 import (
-	"context"
+	"net/http"
 
-	"github.com/pintoter/warehouse-api/internal/model"
+	"github.com/pintoter/warehouse-api/internal/service/model"
 )
 
-//go:generate mockgen -source=service.go -destination=mocks/mock.go
-
 type ProductService interface {
-	ReserveProducts(ctx context.Context, products []model.ReserveProductReq) model.ReserveProductsResp
-	ReleaseProducts(ctx context.Context, products []model.ReleaseProductReq) model.ReleaseProductsResp
-	GetProductsByWarehouse(ctx context.Context, id int) ([]model.Product, error)
+	ReserveProducts(r *http.Request, args *model.ReserveProductsReq, reply *model.ReserveProductsResp) error
+	ReleaseProducts(r *http.Request, args *model.ReleaseProductsReq, reply *model.ReleaseProductsResp) error
+	GetProductsByWarehouse(r *http.Request, args *model.ShowProductsReq, reply *[]model.Product) error
 }

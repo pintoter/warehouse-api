@@ -4,8 +4,8 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/pintoter/warehouse-api/internal/model"
 	repoModel "github.com/pintoter/warehouse-api/internal/repository/model"
+	"github.com/pintoter/warehouse-api/internal/service/model"
 	"github.com/pintoter/warehouse-api/pkg/logger"
 	"github.com/pkg/errors"
 )
