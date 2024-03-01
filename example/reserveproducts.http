@@ -1,0 +1,35 @@
+// 1 WH - 3, 2 WH - 3  ---> 1 WH - 0, 2 WH - 1 
+curl -X 'POST' \
+  'http://localhost:8080/reserveProducts' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"products":[{"code": "12345", "quantity": 5}]}'
+
+
+// 1 WH - 3, 2 WH - 3, 3 WH (not availibale) - 3 ---> error 
+curl -X 'POST' \
+  'http://localhost:8080/reserveProducts' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"products":[{"code": "12345", "quantity": 8}]}'
+
+
+curl -X 'POST' \
+  'http://localhost:8080/reserveProducts' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"products": \
+  [ \
+    {"code": "12345", "quantity": 5}, \
+    {"code": "12346", "quantity": 4}, \
+  ]}'
+
+curl -X 'POST' \
+'http://0.0.0.0:8080/reserveProducts' \
+-H 'accept: application/json' \
+-H 'Content-Type: application/json' \
+-d '{"products": [ \
+  {"code": "12345", "quantity": 1}, \
+  {"code": "12346", "quantity": 2} \
+  ] \
+  }'

@@ -1,0 +1,17 @@
+http:
+  host: warehouse
+  port: 8080
+  shutdownTimeout: 5s
+  readTimeout: 5s
+  writeTimeout: 5s
+
+db:
+  maxOpenConns: 5
+  maxIdleConns: 5
+  connMaxIdleTime: 5m
+  connMaxLifetime: 5m
+
+project:
+  name: warehouse
+  level: debug
+

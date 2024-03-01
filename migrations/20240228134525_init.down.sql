@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS reservation;
+
+DROP TABLE IF EXISTS warehouse_product;
+
+DROP TABLE IF EXISTS product;
+
+DROP TYPE IF EXISTS GOOD_SIZE;
+
+DROP TABLE IF EXISTS warehouse;

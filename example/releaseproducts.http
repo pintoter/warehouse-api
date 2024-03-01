@@ -1,0 +1,5 @@
+curl -X 'POST' \
+  'http://localhost:8080/releaseProducts' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"products":[{"reservation_id":"8f5233dd-c228-49da-94ca-d0161321d365","code": "12345", "quantity": 2}]}'

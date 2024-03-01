@@ -1,0 +1,46 @@
+// Request
+curl -X 'POST' \
+  'http://localhost:8080/showProducts' \ 
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+// Response
+{
+    "error": "invalid id"
+}                                                                                                                                                            
+
+// Request
+curl -X 'POST' \
+  'http://localhost:8080/reserveProducts' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"products":[{"code": "12345", "quantity": 5}]}'
+
+// Response
+{
+    "reservation_id": "422ab5fa-fbf1-461a-99dc-2c6a49c323f1",
+    "reservation_products_info": [
+        {
+            "code": "12345",
+            "status": "reserved"
+        }
+    ]
+}                                                                                                                                                              
+
+// Request
+curl -X 'POST' \
+  'http://localhost:8080/releaseProducts' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{"products":[{"reservation_id":"422ab5fa-fbf1-461a-99dc-2c6a49c323f1","code": "12345", "quantity": 3}]}'
+
+// Response
+{
+    "release_products_info": [
+        {
+            "reservation_id": "422ab5fa-fbf1-461a-99dc-2c6a49c323f1",
+            "code": "12345",
+            "status": "released"
+        }
+    ]
+}

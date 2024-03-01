@@ -1,0 +1,18 @@
+# Binaries
+.bin
+
+# Environment variables
+.env
+
+# Idea
+.idea
+
+# Debug
+.vscode
+
+# Coverage
+cover.html
+cover.out
+
+# Trasher
+.trash

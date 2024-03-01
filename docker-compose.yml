@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+  warehouse:
+    container_name: warehouse
+    build: 
+      dockerfile: Dockerfile
+    env_file: 
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      - DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - warehouse-backend
+    restart: unless-stopped
+
+  postgres:
+    container_name: db
+    image: postgres:latest
+    hostname: postgres
+    env_file: 
+      - .env
+    ports:
+      - "${LOCAL_DB_PORT}:${DB_PORT}"
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: on-failure
+    networks:
+      - warehouse-backend
+
+networks:
+  warehouse-backend:
+    driver: bridge
+
+volumes:
+  pg-data:
+  
