@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pintoter/warehouse-api/internal/dbutil"
 	"github.com/pintoter/warehouse-api/internal/repository"
 	"github.com/pintoter/warehouse-api/internal/service"
 	"github.com/pintoter/warehouse-api/internal/service/model"
@@ -14,100 +15,115 @@ import (
 
 const (
 	rejected = "rejected: "
+	reserved = "reserved"
+	released = "released"
 )
 
 type Service struct {
-	repo repository.Repository
-	// txManager db.TxManager
+	repo      repository.Repository
+	txManager dbutil.TxManager
 }
 
-func NewService(repo repository.Repository) service.ProductService {
+func NewService(repo repository.Repository, txManager dbutil.TxManager) service.ProductService {
 	return &Service{
-		repo: repo,
+		repo:      repo,
+		txManager: txManager,
 	}
 }
 
 func (s *Service) ReserveProducts(r *http.Request, args *model.ReserveProductsReq, reply *model.ReserveProductsResp) error {
 	var (
 		products      = args.Products
-		ProductsInfo  []model.ReserveProductResp
+		productsInfo  []model.ReserveProductResp
 		wg            sync.WaitGroup
+		outputCh             = make(chan model.ReserveProductResp)
 		reservationId string = uuid.New().String()
 	)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	wg.Add(len(products))
-	for _, product := range products {
-		go func() {
-			defer wg.Done()
+	go func() {
+		for _, product := range products {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-			if product.Quantity <= 0 {
-				ProductsInfo = append(ProductsInfo, model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInvalidInput.Error()})
-				return
-			}
+				err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
+					var errTx error
 
-			countProductsInAllWhs, err := s.repo.GetTotalQuantityOfProducts(ctx, product.Code)
-			if err != nil {
-				ProductsInfo = append(ProductsInfo, model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInvalidInput.Error()})
-				return
-			}
+					if product.Quantity <= 0 {
+						errTx = model.ErrInvalidInput
+						return errTx
+					}
 
-			if countProductsInAllWhs < product.Quantity {
-				ProductsInfo = append(ProductsInfo, model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInvalidQuantity.Error()})
-				return
-			}
+					countProductsInAllWhs, err := s.repo.GetTotalQuantityOfProducts(ctx, product.Code)
+					if err != nil {
+						errTx = model.ErrInvalidInput
+						return errTx
+					}
 
-			productsByWarehouses, err := s.repo.GetProductsByWarehousesByCode(ctx, product.Code)
-			if err != nil {
-				ProductsInfo = append(ProductsInfo, model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInvalidInput.Error()})
-				return
-			}
+					if countProductsInAllWhs < product.Quantity {
+						errTx = model.ErrInvalidQuantity
+						return errTx
+					}
 
-			for _, productsByWarehouse := range productsByWarehouses {
-				var leftQuantityOnWarehouse, quantityForReservation int
+					productsByWarehouses, err := s.repo.GetProductsByWarehousesByCode(ctx, product.Code)
+					if err != nil {
+						errTx = model.ErrInvalidInput
+						return errTx
+					}
 
-				switch {
-				case productsByWarehouse.Quantity >= product.Quantity:
-					leftQuantityOnWarehouse = productsByWarehouse.Quantity - product.Quantity
-					quantityForReservation = 0
-				case productsByWarehouse.Quantity < product.Quantity:
-					leftQuantityOnWarehouse = 0
-					quantityForReservation = product.Quantity - productsByWarehouse.Quantity
-				}
+					for _, productsByWarehouse := range productsByWarehouses {
+						var leftQuantityOnWarehouse, quantityForReservation int
 
-				if err := s.repo.UpdateWarehouseQuantity(ctx, productsByWarehouse.WarehouseId, productsByWarehouse.ProductId, leftQuantityOnWarehouse); err != nil {
-					ProductsInfo = append(ProductsInfo, model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInternalServer.Error()})
-					break
-					/*
-						ADD ROLLBACK
-					*/
-				}
+						switch {
+						case productsByWarehouse.Quantity >= product.Quantity:
+							leftQuantityOnWarehouse = productsByWarehouse.Quantity - product.Quantity
+							quantityForReservation = 0
+						case productsByWarehouse.Quantity < product.Quantity:
+							leftQuantityOnWarehouse = 0
+							quantityForReservation = product.Quantity - productsByWarehouse.Quantity
+						}
 
-				_, err = s.repo.CreateReservation(ctx, productsByWarehouse.WarehouseId, productsByWarehouse.ProductId, product.Quantity-quantityForReservation, reservationId)
+						if err := s.repo.UpdateWarehouseQuantity(ctx, productsByWarehouse.WarehouseId, productsByWarehouse.ProductId, leftQuantityOnWarehouse); err != nil {
+							errTx = model.ErrInternalServer
+							return errTx
+						}
+
+						_, err = s.repo.CreateReservation(ctx, productsByWarehouse.WarehouseId, productsByWarehouse.ProductId, product.Quantity-quantityForReservation, reservationId)
+						if err != nil {
+							errTx = model.ErrInternalServer
+							return errTx
+						}
+						if product.Quantity == 0 {
+							break
+						} else {
+							product.Quantity = quantityForReservation
+						}
+					}
+					return nil
+				})
+
 				if err != nil {
-					ProductsInfo = append(ProductsInfo, model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInternalServer.Error()})
-					break
-					/*
-						ADD ROLLBACK
-					*/
-				}
-				if product.Quantity == 0 {
-					break
+					outputCh <- model.ReserveProductResp{Code: product.Code, Status: rejected + err.Error()}
 				} else {
-					product.Quantity = quantityForReservation
+					outputCh <- model.ReserveProductResp{Code: product.Code, Status: reserved}
 				}
-			}
-			ProductsInfo = append(ProductsInfo, model.ReserveProductResp{Code: product.Code, Status: "reserved"})
-		}()
-	}
+			}()
+		}
 
-	wg.Wait()
+		wg.Wait()
+		close(outputCh)
+	}()
+
+	for res := range outputCh {
+		productsInfo = append(productsInfo, res)
+	}
 
 	*reply = model.ReserveProductsResp{
 		ReservationId:           reservationId,
-		ReservationProductsInfo: ProductsInfo,
+		ReservationProductsInfo: productsInfo,
 	}
 
 	return nil
@@ -118,98 +134,89 @@ func (s *Service) ReleaseProducts(r *http.Request, args *model.ReleaseProductsRe
 		products     = args.Products
 		productsInfo []model.ReleaseProductResp
 		wg           sync.WaitGroup
+		outputCh     = make(chan model.ReleaseProductResp)
 	)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	wg.Add(len(products))
-	for _, product := range products {
-		go func() {
-			defer wg.Done()
+	go func() {
+		for _, product := range products {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-			if product.Quantity <= 0 {
-				productsInfo = append(productsInfo, model.ReleaseProductResp{ReservationId: product.ReservationId, Code: product.Code, Status: rejected + model.ErrInvalidInput.Error()})
-				return
-			}
+				err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
+					var errTx error
 
-			quantityProductsInReservation, err := s.repo.GetTotalQuantityOfReservation(ctx, product.ReservationId, product.Code)
-			if err != nil {
-				productsInfo = append(productsInfo, model.ReleaseProductResp{ReservationId: product.ReservationId, Code: product.Code, Status: rejected + model.ErrInvalidInput.Error()})
-				return
-			}
+					if product.Quantity <= 0 {
+						errTx = model.ErrInvalidInput
+						return errTx
+					}
 
-			if quantityProductsInReservation < product.Quantity {
-				productsInfo = append(
-					productsInfo,
-					model.ReleaseProductResp{
-						ReservationId: product.ReservationId,
-						Code:          product.Code,
-						Status:        rejected + model.ErrInvalidReservationQuantity.Error(),
-					})
-				return
-			}
+					quantityProductsInReservation, err := s.repo.GetTotalQuantityOfReservation(ctx, product.ReservationId, product.Code)
+					if err != nil {
+						errTx = model.ErrInvalidInput
+						return errTx
+					}
 
-			productsByWarehousesInReservation, err := s.repo.GetProductsByReservationByIdAndCode(ctx, product.ReservationId, product.Code)
-			if err != nil {
-				productsInfo = append(
-					productsInfo,
-					model.ReleaseProductResp{
-						ReservationId: product.ReservationId,
-						Code:          product.Code,
-						Status:        rejected + model.ErrInvalidInput.Error(),
-					},
-				)
-				return
-			}
+					if quantityProductsInReservation < product.Quantity {
+						errTx = model.ErrInvalidReservationQuantity
+						return errTx
+					}
 
-			for _, productsByWarehouseInResevation := range productsByWarehousesInReservation {
-				var remainInReservation, addToWarehouse int
+					productsByWarehousesInReservation, err := s.repo.GetProductsByReservationByIdAndCode(ctx, product.ReservationId, product.Code)
+					if err != nil {
+						errTx = model.ErrInvalidInput
+						return errTx
+					}
 
-				switch {
-				case productsByWarehouseInResevation.Quantity >= product.Quantity:
-					remainInReservation = productsByWarehouseInResevation.Quantity - product.Quantity
-					addToWarehouse = product.Quantity
-					product.Quantity = 0
-				case productsByWarehouseInResevation.Quantity < product.Quantity:
-					remainInReservation = 0
-					addToWarehouse = productsByWarehouseInResevation.Quantity
-					product.Quantity -= productsByWarehouseInResevation.Quantity
+					for _, productsByWarehouseInResevation := range productsByWarehousesInReservation {
+						var remainInReservation, addToWarehouse int
+
+						switch {
+						case productsByWarehouseInResevation.Quantity >= product.Quantity:
+							remainInReservation = productsByWarehouseInResevation.Quantity - product.Quantity
+							addToWarehouse = product.Quantity
+							product.Quantity = 0
+						case productsByWarehouseInResevation.Quantity < product.Quantity:
+							remainInReservation = 0
+							addToWarehouse = productsByWarehouseInResevation.Quantity
+							product.Quantity -= productsByWarehouseInResevation.Quantity
+						}
+
+						if err := s.repo.UpdateReservationQuantity(ctx, productsByWarehouseInResevation.ID, remainInReservation); err != nil {
+							errTx = model.ErrInternalServer
+							return errTx
+						}
+
+						if err := s.repo.UpdateWarehouseQuantityWithAdd(ctx, productsByWarehouseInResevation.WarehouseId, productsByWarehouseInResevation.ProductId, addToWarehouse); err != nil {
+							errTx = model.ErrInternalServer
+							return errTx
+						}
+
+						if product.Quantity == 0 {
+							break
+						}
+					}
+					return nil
+				})
+
+				if err != nil {
+					outputCh <- model.ReleaseProductResp{ReservationId: product.ReservationId, Code: product.Code, Status: rejected + err.Error()}
+				} else {
+					outputCh <- model.ReleaseProductResp{ReservationId: product.ReservationId, Code: product.Code, Status: released}
 				}
+			}()
+		}
 
-				if err := s.repo.UpdateReservationQuantity(ctx, productsByWarehouseInResevation.ID, remainInReservation); err != nil {
-					productsInfo = append(
-						productsInfo,
-						model.ReleaseProductResp{
-							ReservationId: product.ReservationId,
-							Code:          product.Code,
-							Status:        rejected + model.ErrInternalServer.Error(),
-						},
-					)
-					break
-				}
+		wg.Wait()
+		close(outputCh)
+	}()
 
-				if err := s.repo.UpdateWarehouseQuantityWithAdd(ctx, productsByWarehouseInResevation.WarehouseId, productsByWarehouseInResevation.ProductId, addToWarehouse); err != nil {
-					productsInfo = append(
-						productsInfo,
-						model.ReleaseProductResp{
-							ReservationId: product.ReservationId,
-							Code:          product.Code,
-							Status:        rejected + model.ErrInternalServer.Error(),
-						},
-					)
-					break
-				}
-
-				if product.Quantity == 0 {
-					break
-				}
-			}
-			productsInfo = append(productsInfo, model.ReleaseProductResp{ReservationId: product.ReservationId, Code: product.Code, Status: "released"})
-		}()
+	for res := range outputCh {
+		productsInfo = append(productsInfo, res)
 	}
-
-	wg.Wait()
 
 	*reply = model.ReleaseProductsResp{ReleaseProductsInfo: productsInfo}
 	return nil

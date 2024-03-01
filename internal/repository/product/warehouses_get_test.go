@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jmoiron/sqlx"
 	"github.com/pintoter/warehouse-api/internal/service/model"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,9 @@ func TestGetProductsByWarehouseId(t *testing.T) {
 	}
 	defer db.Close()
 
-	r := NewRepository(db)
+	sqlxDB := sqlx.NewDb(db, "sqlmock")
+
+	r := NewRepository(sqlxDB)
 
 	type args struct {
 		id int

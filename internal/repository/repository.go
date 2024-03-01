@@ -7,13 +7,10 @@ import (
 	"github.com/pintoter/warehouse-api/internal/service/model"
 )
 
-type ProductRepository interface {
+type WarehousesRepository interface {
 	GetProductsByWarehouseId(ctx context.Context, id int) ([]model.Product, error)
-	GetTotalQuantityOfProducts(ctx context.Context, code string) (int, error)
 	GetProductsByWarehousesByCode(ctx context.Context, code string) ([]repoModel.ProductsOnActiveWarehouse, error)
-}
-
-type WarehouseRepository interface {
+	GetTotalQuantityOfProducts(ctx context.Context, code string) (int, error)
 	GetWarehouseAvailabilityById(ctx context.Context, warehouseId int) (bool, error)
 	UpdateWarehouseQuantity(ctx context.Context, warehouseId, productId, quantity int) error
 	UpdateWarehouseQuantityWithAdd(ctx context.Context, warehouseId, productId, quantity int) error
@@ -27,7 +24,6 @@ type ReservationRepository interface {
 }
 
 type Repository interface {
-	ProductRepository
-	WarehouseRepository
+	WarehousesRepository
 	ReservationRepository
 }

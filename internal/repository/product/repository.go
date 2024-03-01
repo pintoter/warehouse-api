@@ -1,8 +1,7 @@
 package product
 
 import (
-	"database/sql"
-
+	"github.com/jmoiron/sqlx"
 	"github.com/pintoter/warehouse-api/internal/repository"
 )
 
@@ -14,10 +13,10 @@ const (
 )
 
 type repo struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewRepository(db *sql.DB) repository.Repository {
+func NewRepository(db *sqlx.DB) repository.Repository {
 	return &repo{
 		db: db,
 	}

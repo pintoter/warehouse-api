@@ -4,7 +4,6 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/pintoter/warehouse-api/pkg/logger"
 )
 
 func updateReservationQuantityBuilder(id, quantity int) (string, []interface{}, error) {
@@ -22,14 +21,10 @@ func (r *repo) UpdateReservationQuantity(ctx context.Context, id, quantity int) 
 		return err
 	}
 
-	res, err := r.db.ExecContext(ctx, query, args...)
+	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
-
-	rowsAffected, _ := res.RowsAffected()
-
-	logger.DebugKV(ctx, "res of UpdateReservationQuantity", "rowsAffected", rowsAffected)
 
 	return nil
 }

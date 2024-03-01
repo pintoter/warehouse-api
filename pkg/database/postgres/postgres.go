@@ -1,28 +1,15 @@
-// package postgres
-
-// import "github.com/jackc/pgx/v5/pgxpool"
-
-// type Config interface {
-// }
-
-// func NewPgConn(cfg Config) *pgxpool.Conn {
-// 	pool, err := pgxpool.NewWithConfig()
-
-// 	return
-// }
-
 package postgres
 
 import (
-	"database/sql"
 	"time"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 )
 
 const (
-	driverName = "postgres"
+	driverName = "pgx"
 )
 
 type Config interface {
@@ -33,8 +20,8 @@ type Config interface {
 	GetConnMaxLifetime() time.Duration
 }
 
-func New(cfg Config) (*sql.DB, error) {
-	db, err := sql.Open(driverName, cfg.GetDSN())
+func New(cfg Config) (*sqlx.DB, error) {
+	db, err := sqlx.Open(driverName, cfg.GetDSN())
 	if err != nil {
 		return nil, errors.Wrap(err, "opening db")
 	}

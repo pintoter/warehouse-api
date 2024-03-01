@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/pintoter/warehouse-api/internal/config"
+	"github.com/pintoter/warehouse-api/internal/dbutil/transaction"
 	"github.com/pintoter/warehouse-api/internal/migrations"
 	productRepository "github.com/pintoter/warehouse-api/internal/repository/product"
 	"github.com/pintoter/warehouse-api/internal/server"
@@ -37,7 +38,8 @@ func Run() {
 	}
 
 	repository := productRepository.NewRepository(db)
-	service := productService.NewService(repository)
+	txManager := transaction.NewTransactionManager(db)
+	service := productService.NewService(repository, txManager)
 
 	handler := transport.NewHandler(service)
 	server := server.New(handler, &cfg.HTTP)
