@@ -86,6 +86,6 @@ func initLogger(_ context.Context, cfg *config.Config) (syncFn func()) {
 	))
 
 	return func() {
-		notSuggaredLogger.Sync()
+		_ = notSuggaredLogger.Sync()
 	}
 }

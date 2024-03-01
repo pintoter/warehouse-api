@@ -23,7 +23,7 @@ func NewHandler(service service.ProductService) *Handler {
 
 	rpcServer := rpc.NewServer()
 	rpcServer.RegisterCodec(json.NewCodec(), "application/json")
-	rpcServer.RegisterService(service, "ProductService")
+	_ = rpcServer.RegisterService(service, "ProductService")
 	handler.router.Handle("/rpc", rpcServer)
 
 	return handler

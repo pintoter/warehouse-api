@@ -9,7 +9,7 @@ import (
 )
 
 func getTotalQuantityOfReservationBuilder(reservationId, productCode string) (string, []interface{}, error) {
-	builder := sq.Select("SUM(quantity)").
+	builder := sq.Select("SUM(r.quantity)").
 		From(reservation + " r").
 		Join(product + " p ON p.id = r.product_id").
 		Where(sq.Eq{"r.reservation_id": reservationId, "p.code": productCode}).
@@ -24,13 +24,13 @@ func (r *repo) GetTotalQuantityOfReservation(ctx context.Context, reservationId 
 		return 0, err
 	}
 
-	var count int
-	err = r.db.QueryRowContext(ctx, query, args...).Scan(&count)
+	var totalQuantity int
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(&totalQuantity)
 	if err != nil {
 		return 0, err
 	}
 
-	return count, nil
+	return totalQuantity, nil
 }
 
 func getProductsByReservationByCodeBuilder(reservationId, code string) (string, []interface{}, error) {

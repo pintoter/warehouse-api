@@ -86,7 +86,8 @@ func (s *Service) ReserveProducts(r *http.Request, args *model.ReserveProductsRe
 							quantityForReservation = product.Quantity - productsByWarehouse.Quantity
 						}
 
-						if err := s.repo.UpdateWarehouseQuantity(ctx, productsByWarehouse.WarehouseId, productsByWarehouse.ProductId, leftQuantityOnWarehouse); err != nil {
+						err := s.repo.UpdateWarehouseQuantity(ctx, productsByWarehouse.WarehouseId, productsByWarehouse.ProductId, leftQuantityOnWarehouse)
+						if err != nil {
 							errTx = model.ErrInternalServer
 							return errTx
 						}
@@ -185,12 +186,21 @@ func (s *Service) ReleaseProducts(r *http.Request, args *model.ReleaseProductsRe
 							product.Quantity -= productsByWarehouseInResevation.Quantity
 						}
 
-						if err := s.repo.UpdateReservationQuantity(ctx, productsByWarehouseInResevation.ID, remainInReservation); err != nil {
+						err := s.repo.UpdateReservationQuantity(ctx,
+							productsByWarehouseInResevation.ID,
+							remainInReservation,
+						)
+						if err != nil {
 							errTx = model.ErrInternalServer
 							return errTx
 						}
 
-						if err := s.repo.UpdateWarehouseQuantityWithAdd(ctx, productsByWarehouseInResevation.WarehouseId, productsByWarehouseInResevation.ProductId, addToWarehouse); err != nil {
+						err = s.repo.UpdateWarehouseQuantityWithAdd(ctx,
+							productsByWarehouseInResevation.WarehouseId,
+							productsByWarehouseInResevation.ProductId,
+							addToWarehouse,
+						)
+						if err != nil {
 							errTx = model.ErrInternalServer
 							return errTx
 						}

@@ -28,5 +28,5 @@ func (r *repo) CreateReservation(ctx context.Context, warehouseId, productId, qu
 		return 0, err
 	}
 
-	return 0, nil
+	return id, nil
 }
