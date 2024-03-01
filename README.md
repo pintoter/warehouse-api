@@ -68,7 +68,6 @@
 }
 ```
 
-
 | Requirement | Result |
 | --- | --- |
 | Use go fmt + goimports  | Done (for check: `make lint`) |
@@ -76,7 +75,7 @@
 | JSON-API with RPC-like methods | Done |
 | Use `PostgreSQL` or `MySQL`  | Done [PostrgeSQL](https://www.postgresql.org/) |
 | `make up` to deploy the service  | Done |
-| .http / curl in README.md / Postman collections | Done (curl in README.md) |
+| .http / curl in README.md / Postman collections | Done (curl in README.md + ./examples/*.http) |
 | Testing code | Few Unit-tests in Repository's layer |
 | Reasoning for choosing packages in go.mod | File `packages.md` |
 
