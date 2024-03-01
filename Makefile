@@ -1,7 +1,7 @@
-.DEFAULT_GOAL = run
+.DEFAULT_GOAL = up
 
-.PHONY: run
-run:
+.PHONY: up
+up:
 	docker-compose -f docker-compose.yml up --remove-orphans
 
 .PHONY: stop

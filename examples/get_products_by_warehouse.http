@@ -19,7 +19,6 @@
     }'
 
 
-Req:
   curl -X 'POST' \
   'http://localhost:8080/rpc' \
   -H 'accept: application/json' \
@@ -29,6 +28,3 @@ Req:
     "params": [{"warehouse_id": 3}],
     "id": "coola"
     }'
-
-Resp:
-  {"result":[{"id":1,"name":"Lacoste T-Shirt","size":"XS","code":"12345","quantity":3},{"id":9,"name":"Adidas Hoodie","size":"L","code":"10101011","quantity":3},{"id":10,"name":"Adidas Hoodie","size":"XL","code":"10101012","quantity":5},{"id":11,"name":"Adidas Hoodie","size":"XXL","code":"10101013","quantity":1},{"id":12,"name":"Nike Longsleeve","size":"S","code":"1111131231","quantity":2}],"error":null,"id":"coola"}
