@@ -2,7 +2,7 @@
 
 ## Examples
 
-[![Golang](https://img.shields.io/badge/Go-v1.21-EEEEEE?logo=go&logoColor=white&labelColor=00ADD8)](https://go.dev/)
+[![Golang](https://img.shields.io/badge/Go-v1.22-EEEEEE?logo=go&logoColor=white&labelColor=00ADD8)](https://go.dev/)
 
 <div align="center">
     <h1>Warehouse API</h1>
