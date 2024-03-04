@@ -93,9 +93,9 @@ func (p *Project) GetMode() string {
 }
 
 type Config struct {
-	HTTP    HTTP
-	DB      DB
-	Project Project
+	HTTP
+	DB
+	Project
 }
 
 var config = new(Config)
@@ -115,7 +115,7 @@ func init() {
 	}
 }
 
-func Get() *Config {
+func New() *Config {
 	once.Do(func() {
 		var err error
 

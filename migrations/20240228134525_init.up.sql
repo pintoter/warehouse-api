@@ -40,7 +40,7 @@ VALUES
 CREATE TABLE IF NOT EXISTS warehouse_product (
   warehouse_id INTEGER REFERENCES warehouse(id),
   product_id INTEGER REFERENCES product(id),
-  quantity SMALLINT,
+  quantity SMALLINT CHECK (quantity >= 0),
   PRIMARY KEY (warehouse_id, product_id)
 );
 
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS reservation (
   reservation_id UUID NOT NULL,
   warehouse_id INTEGER REFERENCES warehouse(id),
   product_id INTEGER REFERENCES product(id),
-  quantity SMALLINT,
+  quantity SMALLINT CHECK (quantity >= 0),
   reserved_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

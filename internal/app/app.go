@@ -22,7 +22,7 @@ import (
 func Run() {
 	ctx := context.Background()
 
-	cfg := config.Get()
+	cfg := config.New()
 
 	syncLogger := initLogger(ctx, cfg)
 	defer syncLogger()
@@ -36,11 +36,11 @@ func Run() {
 	if err != nil {
 		logger.FatalKV(ctx, "Failed connect database", "err", err)
 	}
+	logger.InfoKV(ctx, "PostgreSQL connected", "Stats", db.Stats())
 
 	repository := productRepository.NewRepository(db)
 	txManager := transaction.NewTransactionManager(db)
 	service := productService.NewService(repository, txManager)
-
 	handler := transport.NewHandler(service)
 	server := server.New(handler, &cfg.HTTP)
 
@@ -62,9 +62,14 @@ func Run() {
 	}
 }
 
-func initLogger(_ context.Context, cfg *config.Config) (syncFn func()) {
+type LogConfig interface {
+	GetLevel() string
+	GetName() string
+}
+
+func initLogger(_ context.Context, cfg LogConfig) (syncFn func()) {
 	loggingLevel := zap.InfoLevel
-	if cfg.Project.GetLevel() == logger.DebugLevel {
+	if cfg.GetLevel() == logger.DebugLevel {
 		loggingLevel = zap.DebugLevel
 	}
 
@@ -82,7 +87,7 @@ func initLogger(_ context.Context, cfg *config.Config) (syncFn func()) {
 
 	sugarLogger := notSuggaredLogger.Sugar()
 	logger.SetLogger(sugarLogger.With(
-		"service", cfg.Project.GetName(),
+		"service", cfg.GetName(),
 	))
 
 	return func() {

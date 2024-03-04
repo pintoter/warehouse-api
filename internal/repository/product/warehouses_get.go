@@ -6,8 +6,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	repoModel "github.com/pintoter/warehouse-api/internal/repository/model"
 	"github.com/pintoter/warehouse-api/internal/service/model"
-	"github.com/pintoter/warehouse-api/pkg/logger"
-	"github.com/pkg/errors"
 )
 
 func getProductsByWarehouseIdBuilder(id int) (string, []interface{}, error) {
@@ -21,18 +19,13 @@ func getProductsByWarehouseIdBuilder(id int) (string, []interface{}, error) {
 }
 
 func (r *repo) GetProductsByWarehouseId(ctx context.Context, id int) ([]model.Product, error) {
-	layer := "repo.GetProductsByWarehouseId"
-	logger.DebugKV(ctx, "res", "layer", layer, "id", id)
 	query, args, err := getProductsByWarehouseIdBuilder(id)
 	if err != nil {
 		return nil, err
 	}
-	logger.DebugKV(ctx, "res", "layer", layer, "query", query, "err", err, "args", args)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
-	logger.DebugKV(ctx, "res", "layer", layer, "rows", rows, "err", err)
 	if err != nil {
-		logger.DebugKV(ctx, "res", "layer", layer, "query", query, "err", err)
 		return nil, err
 	}
 	defer func() {
@@ -45,15 +38,12 @@ func (r *repo) GetProductsByWarehouseId(ctx context.Context, id int) ([]model.Pr
 
 		err = rows.Scan(&product.ID, &product.Name, &product.Size, &product.Code, &product.Quantity)
 		if err != nil {
-			logger.DebugKV(ctx, "res", "layer", layer, "query", query, "err", err)
-			return nil, errors.Wrap(err, "GetProductsByWHId rows.Scan")
+			return nil, err
 		}
-		logger.DebugKV(ctx, "res", "layer", layer, "product", product)
 		products = append(products, product)
 	}
 
 	if rows.Err() != nil {
-		logger.DebugKV(ctx, "res", "layer", layer, "rows.Err()", rows.Err())
 		return nil, rows.Err()
 	}
 
@@ -118,7 +108,7 @@ func (r *repo) GetProductsByWarehousesByCode(ctx context.Context, code string) (
 
 		err = rows.Scan(&ProductsByWH.WarehouseId, &ProductsByWH.ProductId, &ProductsByWH.Quantity)
 		if err != nil {
-			return nil, errors.Wrap(err, "GetProductsByWHId rows.Scan")
+			return nil, err
 		}
 
 		ProductsByWHs = append(ProductsByWHs, ProductsByWH)
