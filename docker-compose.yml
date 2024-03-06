@@ -26,6 +26,7 @@ services:
     ports:
       - "${LOCAL_DB_PORT}:${DB_PORT}"
     environment:
+      - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
       - pg-data:/var/lib/postgresql/data
