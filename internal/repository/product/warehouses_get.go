@@ -2,6 +2,7 @@ package product
 
 import (
 	"context"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	repoModel "github.com/pintoter/warehouse-api/internal/repository/model"
@@ -50,28 +51,42 @@ func (r *repo) GetProductsByWarehouseId(ctx context.Context, id int) ([]model.Pr
 	return products, nil
 }
 
-func getTotalQuantityOfProductsBuilder(code string) (string, []interface{}, error) {
-	builder := sq.Select("SUM(quantity)").
-		From(warehouseProduct + " wp").
-		Join(product + " p ON p.id = wp.product_id").
-		Join(warehouse + " w ON w.id = wp.warehouse_id").
-		Where(sq.Eq{"p.code": code, "w.availability": true}).
-		PlaceholderFormat(sq.Dollar)
+// func getTotalQuantityOfProductsBuilder(code string) (string, []interface{}, error) {
+// 	builder := sq.Select("SUM(quantity)").
+// From(warehouseProduct + " wp").
+// 		Join(product + " p ON p.id = wp.product_id").
+// 		Join(warehouse + " w ON w.id = wp.warehouse_id").
+// 		Where(sq.Eq{"p.code": code, "w.availability": true}).
+// 		PlaceholderFormat(sq.Dollar)
 
-	return builder.ToSql()
-}
+// 	return builder.ToSql()
+// }
 
 func (r *repo) GetTotalQuantityOfProducts(ctx context.Context, code string) (int, error) {
-	query, args, err := getTotalQuantityOfProductsBuilder(code)
+	// query, args, err := getTotalQuantityOfProductsBuilder(code)
+	// if err != nil {
+	// 	return 0, err
+	// }
+
+	query := `WITH total_products AS (
+		SELECT wp.quantity
+		FROM warehouse_product wp
+		JOIN product p ON p.id = wp.product_id
+		JOIN warehouse w ON w.id = wp.warehouse_id
+		WHERE p.code = $1 AND w.availability = true
+		FOR UPDATE
+	)
+	
+		SELECT SUM(quantity) FROM total_products
+	`
+
+	var count int
+	err := r.db.QueryRowContext(ctx, query, code).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
 
-	var count int
-	err = r.db.QueryRowContext(ctx, query, args...).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
+	time.Sleep(5 * time.Minute)
 
 	return count, nil
 }

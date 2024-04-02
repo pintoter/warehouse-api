@@ -12,14 +12,15 @@ import (
 	repoModel "github.com/pintoter/warehouse-api/internal/repository/model"
 	"github.com/pintoter/warehouse-api/internal/service"
 	"github.com/pintoter/warehouse-api/internal/service/model"
+	"github.com/pintoter/warehouse-api/pkg/logger"
 	"github.com/pintoter/warehouse-api/pkg/semaphore"
 )
 
 const (
-	rejected        = "rejected: "
-	reserved        = "reserved"
-	released        = "released"
-	goroutinesLimit = 10
+	rejected = "rejected: "
+	reserved = "reserved"
+	released = "released"
+	GOLIMIT  = 10
 )
 
 type Service struct {
@@ -34,14 +35,27 @@ func NewService(repo repository.Repository, txManager dbutil.TxManager) service.
 	}
 }
 
+/*
+
+wg.Add(1)
+go func() {
+	for product := range productsChan {
+		wg.Add(1)
+		go work.......
+
+	}
+}()
+
+*/
+
 func (s *Service) ReserveProducts(r *http.Request, args *model.ReserveProductsReq, reply *model.ReserveProductsResp) error {
 	var (
-		products      = args.Products
-		productsInfo  []model.ReserveProductResp
-		wg            sync.WaitGroup
-		outputCh             = make(chan model.ReserveProductResp)
-		reservationId string = uuid.New().String()
-		sema          *semaphore.Semaphore
+		products        = args.Products
+		productsInfo    []model.ReserveProductResp
+		wg              sync.WaitGroup
+		outputCh               = make(chan model.ReserveProductResp)
+		reservationId   string = uuid.New().String()
+		goroutinesCount int
 	)
 
 	if len(products) == 0 {
@@ -49,18 +63,22 @@ func (s *Service) ReserveProducts(r *http.Request, args *model.ReserveProductsRe
 		return model.ErrInvalidInput
 	}
 
-	if len(products) > goroutinesLimit {
-		sema = semaphore.New(goroutinesLimit)
+	if len(products) > GOLIMIT {
+		goroutinesCount = GOLIMIT
 	} else {
-		sema = semaphore.New(len(products))
+		goroutinesCount = len(products)
 	}
 
+	productsChan := make(chan model.ReserveProductReq, goroutinesCount)
+
+	go s.createReserveProductWork(products, productsChan)
+
 	go func() {
-		for _, product := range products {
+		for product := range productsChan {
 			wg.Add(1)
-			go s.processReservation(r.Context(), outputCh, &wg, sema, product, reservationId)
+			go s.processReservation(r.Context(), outputCh, &wg, product, reservationId)
 		}
-		wg.Wait()
+		wg.Wait() // nyjen li wg Wait
 		close(outputCh)
 	}()
 
@@ -76,14 +94,27 @@ func (s *Service) ReserveProducts(r *http.Request, args *model.ReserveProductsRe
 	return nil
 }
 
-func (s *Service) processReservation(ctx context.Context, outputCh chan<- model.ReserveProductResp, wg *sync.WaitGroup, sema *semaphore.Semaphore, product model.ReserveProductReq, reservationId string) {
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+func (s *Service) createReserveProductWork(products []model.ReserveProductReq, productsChan chan<- model.ReserveProductReq) {
+	for _, inputProduct := range products {
+		productsChan <- inputProduct
+	}
+}
+
+func (s *Service) startLimitedReserveProduct(ctx context.Context, productsChan chan model.ReserveProductReq, outputCh chan<- model.ReserveProductResp, wg *sync.WaitGroup, product model.ReserveProductReq, reservationId string) {
+	///
+	for product := range productsChan {
+		wg.Add(1)
+		go s.processReservation(ctx, outputCh, wg, product, reservationId)
+	}
+	wg.Wait() // nyjen li wg Wait
+	close(outputCh)
+}
+
+func (s *Service) processReservation(ctx context.Context, outputCh chan<- model.ReserveProductResp, wg *sync.WaitGroup, product model.ReserveProductReq, reservationId string) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	defer wg.Done()
-
-	sema.Acquire()
-	defer sema.Release()
 
 	if product.Quantity <= 0 {
 		outputCh <- model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInvalidInput.Error()}
@@ -91,35 +122,47 @@ func (s *Service) processReservation(ctx context.Context, outputCh chan<- model.
 	}
 
 	err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		logger.DebugKV(ctx, "Reservation", "info", "Start tx")
 		quantityProductsOnActiveWhs, err := s.repo.GetTotalQuantityOfProducts(ctx, product.Code)
 		if err != nil {
+			logger.DebugKV(ctx, "Reservation", "err", err)
 			return model.ErrInvalidInput
 		}
+		logger.DebugKV(ctx, "Reservation", "quantityProductsOnActiveWhs", quantityProductsOnActiveWhs)
 
 		if quantityProductsOnActiveWhs < product.Quantity {
+			logger.DebugKV(ctx, "Reservation", "err", err)
 			return model.ErrInvalidQuantity
 		}
 
 		// Get active warehouses sorted by quantity of products with warehouse code
 		productsByWarehouses, err := s.repo.GetProductsByWarehousesByCode(ctx, product.Code)
 		if err != nil {
+			logger.DebugKV(ctx, "Reservation", "err", err)
 			return model.ErrInternalServer
 		}
+		logger.DebugKV(ctx, "Reservation", "productsByWarehouses", productsByWarehouses)
 
+		logger.DebugKV(ctx, "Reservation", "startReservation", "true")
 		err = s.startReservation(ctx, productsByWarehouses, reservationId, product.Quantity)
 		if err != nil {
+			logger.DebugKV(ctx, "Reservation", "err", err)
 			return err
 		}
 
 		return nil
 	})
 
+	logger.DebugKV(ctx, "Reservation", "switch", "switch")
 	switch {
 	case ctx.Err() != nil:
+		logger.DebugKV(ctx, "Reservation switch", "ctx.Err() != nil", ctx.Err())
 		outputCh <- model.ReserveProductResp{Code: product.Code, Status: rejected + model.ErrInternalServer.Error()}
 	case err != nil:
+		logger.DebugKV(ctx, "Reservation switch", "err != nil", err)
 		outputCh <- model.ReserveProductResp{Code: product.Code, Status: rejected + err.Error()}
 	default:
+		logger.DebugKV(ctx, "Reservation switch", "default", "default")
 		outputCh <- model.ReserveProductResp{Code: product.Code, Status: reserved}
 	}
 }
